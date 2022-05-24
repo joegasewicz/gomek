@@ -1,0 +1,190 @@
+package gomek
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+)
+
+const (
+	DEFAULT_BASE_TEMPLATE = "layout"
+	DEFAULT_HOST          = "localhost"
+	DEFAULT_PORT          = 9090
+	DEFAULT_PROTOCOL      = "http"
+)
+
+var (
+	DEFAULT_METHODS = []string{"GET"}
+)
+
+type Data map[string]interface{}
+
+// CurrentView is a custom type representing the http.HandlerFunc type.
+type CurrentView func(http.ResponseWriter, *http.Request, *Data)
+
+type Handle func(pattern string, handler http.Handler)
+
+type Config struct {
+	BaseTemplateName string
+}
+
+type App struct {
+	baseTemplateName string
+	baseTemplates    []string
+	Config           Config
+	currentRoute     string
+	currentMethods   []string
+	currentTemplates []string
+	currentView      CurrentView
+	mux              *http.ServeMux
+	Host             string
+	Port             int
+	Protocol         string
+	view             View
+	Handle           Handle
+}
+
+func createAddr(a *App) string {
+	return fmt.Sprintf("%s:%d", a.Host, a.Port)
+}
+
+func (a *App) Start() {
+	// Store the last view
+	a.view.Store(a)
+	// Handle defaults
+	if a.Config.BaseTemplateName == "" {
+		a.Config.BaseTemplateName = DEFAULT_BASE_TEMPLATE
+	}
+	if a.Host == "" {
+		a.Host = DEFAULT_HOST
+	}
+	if a.Port == 0 {
+		a.Port = DEFAULT_PORT
+	}
+	if a.Protocol == "" {
+		a.Protocol = DEFAULT_PROTOCOL
+	}
+	if len(a.currentMethods) < 1 {
+		a.currentMethods = DEFAULT_METHODS
+	}
+	// Create views & templates
+	for _, v := range a.view.StoredViews {
+		a.view.Create(a, v)
+	}
+
+	// Create the origin
+	address := createAddr(a)
+	// Server
+	server := &http.Server{
+		Addr:              address,
+		Handler:           a.mux,
+		TLSConfig:         nil,
+		ReadTimeout:       0,
+		ReadHeaderTimeout: 0,
+		WriteTimeout:      0,
+		IdleTimeout:       0,
+		MaxHeaderBytes:    0,
+		TLSNextProto:      nil,
+		ConnState:         nil,
+		ErrorLog:          nil,
+		BaseContext:       nil,
+		ConnContext:       nil,
+	}
+	log.Printf("Starting server on %s://%s", a.Protocol, address)
+	// Start server...
+	server.ListenAndServe()
+}
+
+func (a *App) Listen(port int) {
+	a.Port = port
+}
+
+// Methods CRUD methods to match on the request URL. If there are no methods
+// declared, then it defaults to - `"GET"`
+// For Example
+//
+// 		app.Methods("GET")
+//		app.Methods("GET", "POST", "DELETE")
+//
+func (a *App) Methods(methods ...string) *App {
+	a.currentMethods = methods
+	return a
+}
+
+// Route A string representing the incoming request URL.
+// This is the first argument to Gomek's mux.Route() method or the first
+// argument to http.HandleFunc(). For Example:
+//
+//
+//		app.Route("/") // ... other chained methods
+//
+func (a *App) Route(route string) *App {
+	if a.currentRoute != "" {
+		// Store the previous view to lazily register them at run time
+		a.view.Store(a)
+	}
+	a.currentRoute = route
+	return a
+}
+
+// Templates Method that takes a single template relative path or multiple template
+// path slices of main route templates (not partial templates). For example:
+//
+//		 app.Route("/")
+//			.View(Home)
+//			.Methods("GET")
+//			.Templates("./templates/hero.html", "./templates/routes/home.html")
+//
+// The above example adds a `hero.html` partial template & a main route `home.html` template.
+func (a *App) Templates(templates ...string) {
+	a.currentTemplates = templates
+}
+
+// BaseTemplates method accepts slices of string, string if the name of the
+// template file.
+//
+//
+//		baseTemplates := []string{
+//			"./templates/layout.html",
+//			"./templates/sidebar.html",
+//			"./templates/navbar.html",
+//			"./templates/footer.html",
+//		}
+//		app.BaseTemplate(baseTemplates)
+//
+func (a *App) BaseTemplates(templates ...string) {
+	a.baseTemplates = templates
+}
+
+// New creates a new gomek application
+func New(config Config) App {
+	mux := http.NewServeMux()
+
+	return App{
+		Config: config,
+		mux:    mux,
+		Handle: mux.Handle,
+	}
+}
+
+// View is called if the Route request URL is matched.
+// handler arg is your View function.Create a View - template data needs to be passed
+// by value to `data *map[string]interface{}`
+//
+//
+//		func Home(w http.ResponseWriter, r *http.Request, data *gomek.Data) {
+//    		var templateData gomek.Data // Or map[string]interface{} .etc... // Create a map to store your template data
+//    		templateData = make(map[string]interface{})
+//    		templateData["heading"] = "Create a new advert"
+//    		*data = templateData // pass by value back to `data`
+//		}
+//
+//		app.
+// 		  // ...
+//		  .View(Home)
+//		  // ...
+//
+func (a *App) View(view CurrentView) *App {
+	a.currentView = view
+	return a
+}
