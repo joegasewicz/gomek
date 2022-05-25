@@ -9,6 +9,7 @@ A tiny http framework
 - Middleware - add yor own middleware
 - Logging
 - CORS
+- JSON
 
 # Example
 ```go
