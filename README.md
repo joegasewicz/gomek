@@ -11,6 +11,11 @@ A tiny http framework
 - CORS
 - JSON
 
+# Install
+
+```bash
+go get github.com/joegasewicz/gomek
+```
 # Example
 ```go
 import (
