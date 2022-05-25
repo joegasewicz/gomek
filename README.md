@@ -6,7 +6,9 @@ A tiny http framework
 - Templates are managed for you - only declare your base templates once.
 - Views handle your data only e.g. no template logic (Single-responsibility principle).
 - Define HTTP methods per View method.
-
+- Middleware - add yor own middleware
+- Logging
+- CORS
 
 # Example
 ```go
@@ -14,18 +16,32 @@ import (
     "github.com/joegasewicz/gomek"
     "net/http"
 )
-// Create your views
-func index(w http.ResponseWriter, r *http.Request, data *gomek.Data) {
-    *data = nil
+// A view that handles a template's data
+func index(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
+    templateData := make(gomek.Data)
+	// templateData["Title"] = "Hello!"
+	*d = templateData
 }
+
+// A view that just returns JSON
 func blog(w http.ResponseWriter, r *http.Request, data *gomek.Data) {
-    *data = nil
+    var blog Blog
+	// query database...
+	gomek.JSON(w, blog)
 }
 
 func main() {
     c := gomek.Config{
         // Declare your base template e.g (`layout` if template filename is `layout.gohtml`)
-        BaseTemplateName: "layout", 
+        BaseTemplateName: "layout",
+		BaseTemplates: []string{
+            "./templates/layout.gohtml",
+            "./templates/sidebar.gohtml",
+            "./templates/navbar.gohtml",
+            "./templates/footer.gohtml",
+        },
+		// Or declare your base template paths with `BaseTemplates([]string)`
+		// app.BaseTemplates("./templates/layout.gohtml")
     }
 	// Create a new gomek app
     app := gomek.New(c)
@@ -35,9 +51,11 @@ func main() {
     // Declare your views
     app.Route("/blog").View(blog).Methods("GET", "POST").Templates("./templates/blog.gohtml")
     app.Route("/").View(index).Methods("GET").Templates("./templates/index.gohtml")
-    // Declare all your base template paths
-    app.BaseTemplates("./templates/layout.gohtml")
-    app.Listen(6011) // Set a port (optional)
+	// Add middleware
+    app.Use(gomek.CORS) // Use gomek's CORS or any other third party package
+	app.Use(MyCustomAuth)
+    // Set a port (optional)
+    app.Listen(6011)
 	// Start your app
     app.Start()
 }

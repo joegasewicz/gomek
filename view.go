@@ -16,14 +16,26 @@ type View struct {
 
 func (v *View) Create(a *App, view View) {
 	t := Template{
-		base: a.baseTemplates,
+		base: a.Config.BaseTemplates,
 	}
+	// Add templates
 	finalTemplates := t.Run(view.CurrentTemplates...)
-	a.mux.HandleFunc(view.CurrentRoute, v.handleFuncWrapper(finalTemplates, a, view.CurrentView))
-}
-
-func doesMethodMatch() {
-
+	if len(finalTemplates) > 0 {
+		log.Printf("%s: %s\n", view.CurrentRoute, finalTemplates)
+	}
+	// Add middleware
+	var wrappedHandler http.HandlerFunc
+	for _, m := range a.middleware {
+		if m != nil {
+			wrappedHandler = m(v.handleFuncWrapper(finalTemplates, a, view.CurrentView))
+		}
+	}
+	// In case there is an option to turn off all gomek default middleware
+	if wrappedHandler == nil {
+		wrappedHandler = v.handleFuncWrapper(finalTemplates, a, view.CurrentView)
+	}
+	// Create handler
+	a.mux.HandleFunc(view.CurrentRoute, wrappedHandler)
 }
 
 func getView(r *http.Request, a *App) (*View, bool) {
@@ -68,12 +80,14 @@ func (v *View) handleFuncWrapper(templates []string, a *App, currentView Current
 		}
 		// Handler processes data only
 		currentView(w, r, &data)
-		// Add template(s)
-		te, err := template.ParseFiles(templates...)
-		if err != nil {
-			log.Fatalf("Error parsing templates: %v", err.Error())
+		// Add template(s) if they exist
+		if len(templates) > 0 {
+			te, err := template.ParseFiles(templates...)
+			if err != nil {
+				log.Fatalf("Error parsing templates: %v", err.Error())
+			}
+			te.ExecuteTemplate(w, a.Config.BaseTemplateName, data)
 		}
-		te.ExecuteTemplate(w, a.Config.BaseTemplateName, data)
 	}
 }
 

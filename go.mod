@@ -1,3 +1,3 @@
-module github.com/joegasewicz/gomek
+module github.com/joegasewicz/gotek
 
 go 1.18

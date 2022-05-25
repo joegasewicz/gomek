@@ -26,6 +26,7 @@ type Handle func(pattern string, handler http.Handler)
 
 type Config struct {
 	BaseTemplateName string
+	BaseTemplates    []string
 }
 
 type App struct {
@@ -42,6 +43,7 @@ type App struct {
 	Protocol         string
 	view             View
 	Handle           Handle
+	middleware       []func(http.Handler) http.HandlerFunc
 }
 
 func createAddr(a *App) string {
@@ -67,6 +69,8 @@ func (a *App) Start() {
 	if len(a.currentMethods) < 1 {
 		a.currentMethods = DEFAULT_METHODS
 	}
+	// Add middleware
+	a.Use(Logging)
 	// Create views & templates
 	for _, v := range a.view.StoredViews {
 		a.view.Create(a, v)
@@ -153,7 +157,7 @@ func (a *App) Templates(templates ...string) {
 //		app.BaseTemplate(baseTemplates)
 //
 func (a *App) BaseTemplates(templates ...string) {
-	a.baseTemplates = templates
+	a.Config.BaseTemplates = templates
 }
 
 // New creates a new gomek application
@@ -187,4 +191,9 @@ func New(config Config) App {
 func (a *App) View(view CurrentView) *App {
 	a.currentView = view
 	return a
+}
+
+// Use adds middleware.
+func (a *App) Use(h func(http.Handler) http.HandlerFunc) {
+	a.middleware = append(a.middleware, h)
 }

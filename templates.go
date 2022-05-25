@@ -1,7 +1,5 @@
 package gomek
 
-import "fmt"
-
 // Template type used to hold the app's base templates
 type Template struct {
 	base []string
@@ -12,6 +10,5 @@ func (t *Template) Run(routeTemplates ...string) []string {
 	var currentViewTemplates []string
 	currentViewTemplates = append(currentViewTemplates, t.base...)
 	currentViewTemplates = append(currentViewTemplates, routeTemplates...)
-	fmt.Println(currentViewTemplates)
 	return currentViewTemplates
 }
