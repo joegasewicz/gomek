@@ -1,27 +1,48 @@
 # Gomek
-A tiny http framework
+A minimal http framework that includes some useful tools
 
 ## Features
 - Easy to learn API.
-- Templates are managed for you - only declare your base templates once.
 - Views handle your data only e.g. no template logic (Single-responsibility principle).
 - Define HTTP methods per View method.
 - Middleware - add yor own middleware
 - Logging
 - CORS
 - JSON
+- Access request arguments
+- Static files
 
 # Install
-
 ```bash
 go get github.com/joegasewicz/gomek
 ```
+
 # Example
 ```go
-import (
-    "github.com/joegasewicz/gomek"
-    "net/http"
-)
+c := gomek.Config{
+    BaseTemplateName: "layout",
+    BaseTemplates: []string{
+        "./templates/layout.gohtml",
+    },
+}
+// Create a new gomek app
+app := gomek.New(c)
+// Declare your views
+app.Route("/blog").View(blog).Methods("GET", "POST").Templates("./templates/blog.gohtml")
+// Add middleware
+app.Use(gomek.CORS) // Use gomek's CORS or any other third party package
+// Set a port (optional)
+app.Listen(6011)
+// Start your app
+app.Start()
+```
+
+### Handlers
+There are 2 types of handlers
+- Handlers that render templates
+- Handlers that return JSON / text .etc
+
+```go
 // A view that handles a template's data
 func index(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
     templateData := make(gomek.Data)
@@ -32,37 +53,41 @@ func index(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
 // A view that just returns JSON
 func blog(w http.ResponseWriter, r *http.Request, data *gomek.Data) {
     var blog Blog
-	// query database...
+	// query database then return JSON
 	gomek.JSON(w, blog)
 }
+```
 
-func main() {
-    c := gomek.Config{
-        // Declare your base template e.g (`layout` if template filename is `layout.gohtml`)
-        BaseTemplateName: "layout",
-		BaseTemplates: []string{
-            "./templates/layout.gohtml",
-            "./templates/sidebar.gohtml",
-            "./templates/navbar.gohtml",
-            "./templates/footer.gohtml",
-        },
-		// Or declare your base template paths with `BaseTemplates([]string)`
-		// app.BaseTemplates("./templates/layout.gohtml")
-    }
-	// Create a new gomek app
-    app := gomek.New(c)
-	// Handle static files
-	files := http.FileServer(http.Dir("static"))
-    app.Handle("/static/", http.StripPrefix("/static/", files))
-    // Declare your views
-    app.Route("/blog").View(blog).Methods("GET", "POST").Templates("./templates/blog.gohtml")
-    app.Route("/").View(index).Methods("GET").Templates("./templates/index.gohtml")
-	// Add middleware
-    app.Use(gomek.CORS) // Use gomek's CORS or any other third party package
-	app.Use(MyCustomAuth)
-    // Set a port (optional)
-    app.Listen(6011)
-	// Start your app
-    app.Start()
-}
+### Request Arguments
+Access the request route arguments inside a handler
+```go
+args := gomek.Args(r)
+```
+
+### JSON Response
+Return a JSON response from within a handler
+```go
+gomek.JSON(w, blog)
+```
+
+### CORS
+Development CORS only
+```go
+app := gomek.New(gomek.Config{})
+app.Use(gomek.CORS)
+```
+
+### Set BaseTemplates
+Set the base templates via the `BaseTemplates` method
+```go
+app := gomek.New(gomek.Config{BaseTemplateName: "layout"})
+app.BaseTemplates("./template/layout.html". "./templates/hero.html")
+```
+
+### Static Files
+```go
+app := gomek.New(gomek.Config{})
+publicFiles := http.FileServer(http.Dir("public"))
+app.Handle("/public/", http.StripPrefix("/public/", publicFiles))
+
 ```
