@@ -118,6 +118,9 @@ func (v *View) handleFuncWrapper(templates []string, a *App, currentView Current
 				log.Fatalf("Error parsing templates: %v", err.Error())
 			}
 			te.ExecuteTemplate(w, a.Config.BaseTemplateName, data)
+		} else {
+			// No templates so treat as JSON / TEXT
+			r.Header.Set("Content-Type", "application/json")
 		}
 	}
 }
@@ -129,22 +132,23 @@ func (v *View) Store(a *App) {
 		CurrentTemplates: a.currentTemplates,
 		CurrentView:      a.currentView,
 	}
-	r := strings.Split(a.currentRoute, "/")
-	for i := 1; i < len(r); i++ {
-		// If the is any path variables in a route then just break out and store the
-		// first path segment as the root
-		if string(r[i][0]) == "<" && string(r[i][len(r[i])-1]) == ">" {
-			// Swap the caller's current route to registeredRoute
-			c.registeredRoute = a.currentRoute
-			// Register routes by storing route metadata in a View type
-			// If a route has path variables, then set the route as the first path segment e.g /blogs/
-			c.CurrentRoute = fmt.Sprintf("/%s/", r[1])
-			// Save the path segments in slices of string, then we can match the path variables against incoming request
-			c.routePaths = r[1:]
-			c.rootName = r[1]
-			break
+	if a.currentRoute != "/" {
+		r := strings.Split(a.currentRoute, "/")
+		for i := 1; i < len(r); i++ {
+			// If the are any path variables in a route then just break out and store the
+			// first path segment as the root
+			if string(r[i][0]) == "<" && string(r[i][len(r[i])-1]) == ">" {
+				// Swap the caller's current route to registeredRoute
+				c.registeredRoute = a.currentRoute
+				// Register routes by storing route metadata in a View type
+				// If a route has path variables, then set the route as the first path segment e.g /blogs/
+				c.CurrentRoute = fmt.Sprintf("/%s/", r[1])
+				// Save the path segments in slices of string, then we can match the path variables against incoming request
+				c.routePaths = r[1:]
+				c.rootName = r[1]
+				break
+			}
 		}
 	}
-
 	v.StoredViews = append(v.StoredViews, c)
 }
