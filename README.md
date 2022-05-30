@@ -1,5 +1,5 @@
 # Gomek
-A minimal http framework that includes some useful tools
+A minimal http framework that includes some useful tools. Inspired by Flask.
 
 ## Features
 - Easy to learn API.
@@ -83,11 +83,32 @@ Set the base templates via the `BaseTemplates` method
 app := gomek.New(gomek.Config{BaseTemplateName: "layout"})
 app.BaseTemplates("./template/layout.html". "./templates/hero.html")
 ```
+### Handlers with multiple methods
+If you want to assign multiple verbs to the same route then use the following method clause
+```go
+app.Route("/blog").View(blog).Methods("GET", "POST")
+func index(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
+    if r.Method == "GET" {
+		// code for GET requests to /blogs
+    }
+	if r. Method == "POST" {
+		// code for POST requests to /blog
+    }
+	// .etc...
+```
+
+### URL Path Variables
+```go
+app.Route("/blogs/<blog_id>").View(GetBlogs).Methods("GET", "POST")
+
+func GetBlogs(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
+    vars := gomek.Args(r)
+    advertId := vars["blog_id"]
+```
 
 ### Static Files
 ```go
 app := gomek.New(gomek.Config{})
 publicFiles := http.FileServer(http.Dir("public"))
 app.Handle("/public/", http.StripPrefix("/public/", publicFiles))
-
 ```
