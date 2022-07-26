@@ -36,6 +36,7 @@ func (v *View) Create(a *App, view View) {
 			wrappedHandler = m(v.handleFuncWrapper(finalTemplates, a, view.CurrentView))
 		}
 	}
+
 	// In case there is an option to turn off all gomek default middleware
 	if wrappedHandler == nil {
 		wrappedHandler = v.handleFuncWrapper(finalTemplates, a, view.CurrentView)
