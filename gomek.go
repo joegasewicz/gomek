@@ -18,6 +18,19 @@ var (
 	DEFAULT_METHODS = []string{"GET"}
 )
 
+type Gomek interface {
+	Start()
+	Listen(port int)
+	Methods(methods ...string) *App
+	Route(route string) *App
+	Templates(templates ...string)
+	BaseTemplates(templates ...string)
+	New(config Config) App
+	View(view CurrentView) *App
+	Use(h func(http.Handler) http.HandlerFunc)
+	Args(r *http.Request) map[string]string
+}
+
 // Data type used to reference the data reference from the handler args
 //
 //
@@ -43,11 +56,11 @@ type App struct {
 	baseTemplates    []string
 	Config           Config
 	currentRoute     string
-	currentMethods   []string
+	CurrentMethods   []string
 	currentTemplates []string
 	currentView      CurrentView
 	mux              *http.ServeMux
-	Host             string
+	CurrentHost      string
 	Port             int
 	Protocol         string
 	view             View
@@ -55,15 +68,16 @@ type App struct {
 	middleware       []func(http.Handler) http.HandlerFunc
 	rootCtx          context.Context
 	authCtx          context.Context
+	server           *http.Server
 }
 
 func createAddr(a *App) string {
-	return fmt.Sprintf("%s:%d", a.Host, a.Port)
+	return fmt.Sprintf("%s:%d", a.CurrentHost, a.Port)
 }
 
 func (a *App) resetCurrentView() {
 	a.currentRoute = ""
-	a.currentMethods = nil
+	a.CurrentMethods = nil
 	a.baseTemplates = nil
 	a.currentView = nil
 }
@@ -74,7 +88,7 @@ func (a *App) resetCurrentView() {
 //		app = gomek.New(gomek.Config{})
 //		app.Start()
 //
-func (a *App) Start() {
+func (a *App) Start() error {
 	var auth = map[string]string{}
 	// Set app context
 	a.rootCtx = context.Background()
@@ -86,8 +100,8 @@ func (a *App) Start() {
 	if a.Config.BaseTemplateName == "" {
 		a.Config.BaseTemplateName = DEFAULT_BASE_TEMPLATE
 	}
-	if a.Host == "" {
-		a.Host = DEFAULT_HOST
+	if a.CurrentHost == "" {
+		a.CurrentHost = DEFAULT_HOST
 	}
 	if a.Port == 0 {
 		a.Port = DEFAULT_PORT
@@ -95,8 +109,8 @@ func (a *App) Start() {
 	if a.Protocol == "" {
 		a.Protocol = DEFAULT_PROTOCOL
 	}
-	if len(a.currentMethods) < 1 {
-		a.currentMethods = DEFAULT_METHODS
+	if len(a.CurrentMethods) < 1 {
+		a.CurrentMethods = DEFAULT_METHODS
 	}
 	// Add default middleware
 	//a.Use(Logging)
@@ -104,7 +118,6 @@ func (a *App) Start() {
 	for _, v := range a.view.StoredViews {
 		a.view.Create(a, v)
 	}
-
 	// Create the origin
 	address := createAddr(a)
 	// Server
@@ -123,9 +136,15 @@ func (a *App) Start() {
 		BaseContext:       nil,
 		ConnContext:       nil,
 	}
-	log.Printf("Starting server on %s://%s", a.Protocol, address)
+	a.server = server
 	// Start server...
-	server.ListenAndServe()
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Println("error starting gomek server", err)
+	} else {
+		log.Printf("Starting server on %s://%s", a.Protocol, address)
+	}
+	return err
 }
 
 // Listen sets the port the server will accept request on.
@@ -136,6 +155,15 @@ func (a *App) Start() {
 //
 func (a *App) Listen(port int) {
 	a.Port = port
+}
+
+// Host sets the CurrentHost
+//
+//
+//		app.Host("localhost")
+//
+func (a *App) Host(h string) {
+	a.CurrentHost = h
 }
 
 // Methods CRUD methods to match on the request URL. If there are no methods
@@ -151,7 +179,7 @@ func (a *App) Methods(methods ...string) *App {
 	}
 	// Add OPTIONS
 	methods = append(methods, "OPTIONS")
-	a.currentMethods = methods
+	a.CurrentMethods = methods
 	return a
 }
 
@@ -258,4 +286,11 @@ func Args(r *http.Request) map[string]string {
 		return vars.(map[string]string)
 	}
 	return nil
+}
+
+func (a *App) Shutdown() {
+	err := a.server.Shutdown(a.rootCtx)
+	if err != nil {
+		log.Fatalln("error shutting down", err)
+	}
 }

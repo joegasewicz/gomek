@@ -129,14 +129,14 @@ func (v *View) handleFuncWrapper(templates []string, a *App, currentView Current
 func (v *View) Store(a *App) {
 	c := View{
 		CurrentRoute:     a.currentRoute,
-		CurrentMethods:   a.currentMethods,
+		CurrentMethods:   a.CurrentMethods,
 		CurrentTemplates: a.currentTemplates,
 		CurrentView:      a.currentView,
 	}
 	if a.currentRoute != "/" {
 		r := strings.Split(a.currentRoute, "/")
 		for i := 1; i < len(r); i++ {
-			// If the are any path variables in a route then just break out and store the
+			// If there are any path variables in a route then just break out and store the
 			// first path segment as the root
 			if string(r[i][0]) == "<" && string(r[i][len(r[i])-1]) == ">" {
 				// Swap the caller's current route to registeredRoute
