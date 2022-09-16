@@ -126,6 +126,41 @@ func (v *View) handleFuncWrapper(templates []string, a *App, currentView Current
 	}
 }
 
+func (v *View) StoreResource(a *App) {
+	// Deconstructs the implementation of Resource & pairs of each handler
+	// with its corresponding method
+	if a.currentResource != nil {
+		for _, m := range a.currentMethods {
+			switch {
+			case m == "DELETE":
+				{
+					a.currentView = a.currentResource.Delete
+					a.currentMethods = []string{"DELETE"}
+					v.Store(a)
+				}
+			case m == "GET":
+				{
+					a.currentView = a.currentResource.Get
+					a.currentMethods = []string{"GET"}
+					v.Store(a)
+				}
+			case m == "POST":
+				{
+					a.currentView = a.currentResource.Post
+					a.currentMethods = []string{"POST"}
+					v.Store(a)
+				}
+			case m == "PUT":
+				{
+					a.currentView = a.currentResource.Put
+					a.currentMethods = []string{"PUT"}
+					v.Store(a)
+				}
+			}
+		}
+	}
+}
+
 func (v *View) Store(a *App) {
 	c := View{
 		CurrentRoute:     a.currentRoute,
@@ -136,7 +171,7 @@ func (v *View) Store(a *App) {
 	if a.currentRoute != "/" {
 		r := strings.Split(a.currentRoute, "/")
 		for i := 1; i < len(r); i++ {
-			// If the are any path variables in a route then just break out and store the
+			// If there are any path variables in a route then just break out and store the
 			// first path segment as the root
 			if string(r[i][0]) == "<" && string(r[i][len(r[i])-1]) == ">" {
 				// Swap the caller's current route to registeredRoute
