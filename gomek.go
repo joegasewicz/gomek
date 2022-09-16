@@ -20,10 +20,8 @@ var (
 
 // Data type used to reference the data reference from the handler args
 //
-//
-//		func MyHandler(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
-//			*d = map[string]string{ "v": "k"}
-//
+//	func MyHandler(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
+//		*d = map[string]string{ "v": "k"}
 type Data map[string]interface{}
 
 // CurrentView is a custom type representing the http.HandlerFunc type.
@@ -37,6 +35,13 @@ type Config struct {
 	BaseTemplates    []string
 }
 
+type Resource interface {
+	Delete(http.ResponseWriter, *http.Request, *Data)
+	Get(http.ResponseWriter, *http.Request, *Data)
+	Post(http.ResponseWriter, *http.Request, *Data)
+	Put(http.ResponseWriter, *http.Request, *Data)
+}
+
 // App
 type App struct {
 	baseTemplateName string
@@ -46,6 +51,7 @@ type App struct {
 	currentMethods   []string
 	currentTemplates []string
 	currentView      CurrentView
+	currentResource  Resource
 	mux              *http.ServeMux
 	Host             string
 	Port             int
@@ -70,17 +76,19 @@ func (a *App) resetCurrentView() {
 
 // Start sets up all the registered views, templates & middleware
 //
-//
-//		app = gomek.New(gomek.Config{})
-//		app.Start()
-//
+//	app = gomek.New(gomek.Config{})
+//	app.Start()
 func (a *App) Start() {
 	var auth = map[string]string{}
 	// Set app context
 	a.rootCtx = context.Background()
 	a.authCtx = context.WithValue(a.rootCtx, "auth", auth)
 	// Store the last registered view
-	a.view.Store(a)
+	if a.currentResource != nil {
+		a.view.StoreResource(a)
+	} else {
+		a.view.Store(a)
+	}
 	a.resetCurrentView()
 	// Handle defaults
 	if a.Config.BaseTemplateName == "" {
@@ -131,9 +139,7 @@ func (a *App) Start() {
 // Listen sets the port the server will accept request on.
 // If no port is set, then Gomek will default to `5000`
 //
-//
-// 		app.Listen(5001)
-//
+//	app.Listen(5001)
 func (a *App) Listen(port int) {
 	a.Port = port
 }
@@ -142,9 +148,8 @@ func (a *App) Listen(port int) {
 // declared, then it defaults to - `"GET"`
 // For Example
 //
-// 		app.Methods("GET")
-//		app.Methods("GET", "POST", "DELETE")
-//
+//	app.Methods("GET")
+//	app.Methods("GET", "POST", "DELETE")
 func (a *App) Methods(methods ...string) *App {
 	if len(methods) == 0 {
 		methods = append(methods, "GET")
@@ -159,13 +164,15 @@ func (a *App) Methods(methods ...string) *App {
 // This is the first argument to Gomek's mux.Route() method or the first
 // argument to http.HandleFunc(). For Example:
 //
-//
-//		app.Route("/") // ... other chained methods
-//
+//	app.Route("/") // ... other chained methods
 func (a *App) Route(route string) *App {
 	if a.currentRoute != "" {
 		// Store the previous view to lazily register them at run time
-		a.view.Store(a)
+		if a.currentResource != nil {
+			a.view.StoreResource(a)
+		} else {
+			a.view.Store(a)
+		}
 	}
 	// This route gets registered in the Start method
 	a.currentRoute = route
@@ -175,10 +182,10 @@ func (a *App) Route(route string) *App {
 // Templates Method that takes a single template relative path or multiple template
 // path slices of main route templates (not partial templates). For example:
 //
-//		 app.Route("/")
-//			.View(Home)
-//			.Methods("GET")
-//			.Templates("./templates/hero.html", "./templates/routes/home.html")
+//	 app.Route("/")
+//		.View(Home)
+//		.Methods("GET")
+//		.Templates("./templates/hero.html", "./templates/routes/home.html")
 //
 // The above example adds a `hero.html` partial template & a main route `home.html` template.
 func (a *App) Templates(templates ...string) {
@@ -188,24 +195,20 @@ func (a *App) Templates(templates ...string) {
 // BaseTemplates method accepts slices of string, string if the name of the
 // template file.
 //
-//
-//		baseTemplates := []string{
-//			"./templates/layout.html",
-//			"./templates/sidebar.html",
-//			"./templates/navbar.html",
-//			"./templates/footer.html",
-//		}
-//		app.BaseTemplate(baseTemplates)
-//
+//	baseTemplates := []string{
+//		"./templates/layout.html",
+//		"./templates/sidebar.html",
+//		"./templates/navbar.html",
+//		"./templates/footer.html",
+//	}
+//	app.BaseTemplate(baseTemplates)
 func (a *App) BaseTemplates(templates ...string) {
 	a.Config.BaseTemplates = templates
 }
 
 // New creates a new gomek application
 //
-//
-//		app := gomek.New(gomek.Config{})
-//
+//	app := gomek.New(gomek.Config{})
 func New(config Config) App {
 	mux := http.NewServeMux()
 
@@ -220,39 +223,66 @@ func New(config Config) App {
 // handler arg is your View function.Create a View - template data needs to be passed
 // by value to `data *map[string]interface{}`
 //
+//			func Home(w http.ResponseWriter, r *http.Request, data *gomek.Data) {
+//	   		var templateData gomek.Data // Or map[string]interface{} .etc... // Create a map to store your template data
+//	   		templateData = make(map[string]interface{})
+//	   		templateData["heading"] = "Create a new advert"
+//	   		*data = templateData // pass by value back to `data`
+//			}
 //
-//		func Home(w http.ResponseWriter, r *http.Request, data *gomek.Data) {
-//    		var templateData gomek.Data // Or map[string]interface{} .etc... // Create a map to store your template data
-//    		templateData = make(map[string]interface{})
-//    		templateData["heading"] = "Create a new advert"
-//    		*data = templateData // pass by value back to `data`
-//		}
-//
-//		app.
-// 		  // ...
-//		  .View(Home)
-//		  // ...
-//
+//			app.
+//			  // ...
+//			  .View(Home)
+//			  // ...
 func (a *App) View(view CurrentView) *App {
 	a.currentView = view
 	return a
 }
 
+// Resource accepts a type that implements the `Resource` interface.
+// This is useful for Rest design handler methods attached to a named resource
+// type.
+//
+//	type Notice struct {
+//	}
+//
+//	func (n *Notice) Post(w http.ResponseWriter, request *http.Request, data *gomek.Data) {
+//		panic("implement me")
+//	}
+//
+//	func (n *Notice) Put(w http.ResponseWriter, request *http.Request, data *gomek.Data) {
+//		panic("implement me")
+//	}
+//
+//	func (n *Notice) Delete(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
+//		panic("implement me")
+//	}
+//
+//	func (n *Notice) Get(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
+//		var notice schemas.Notice
+//		notice.Name = "Joe!"
+//		gomek.JSON(w, notice, http.StatusOK)
+//	}
+//
+// To use your implentation of the `Resource` type
+//
+//	app.Route("/notices").Resource(&routes.Notice{}).Methods("GET")
+func (a *App) Resource(m Resource) *App {
+	a.currentResource = m
+	return a
+}
+
 // Use adds middleware.
 //
-//
-//		app := gomek.New(gomek.Config{})
-//		app.Use(gomek.CORS)
-//
+//	app := gomek.New(gomek.Config{})
+//	app.Use(gomek.CORS)
 func (a *App) Use(h func(http.Handler) http.HandlerFunc) {
 	a.middleware = append(a.middleware, h)
 }
 
 // Args access the request arguments in a handler as a map
 //
-//
-// 		args := gomek.Args(r)
-//
+//	args := gomek.Args(r)
 func Args(r *http.Request) map[string]string {
 	if vars := r.Context().Value("uriArgs"); vars != nil {
 		return vars.(map[string]string)

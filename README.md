@@ -97,6 +97,34 @@ func index(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
 	// .etc...
 ```
 
+# Restful approach
+```go
+type Notice struct {
+}
+
+func (n *Notice) Post(w http.ResponseWriter, request *http.Request, data *gomek.Data) {
+	panic("implement me")
+}
+
+func (n *Notice) Put(w http.ResponseWriter, request *http.Request, data *gomek.Data) {
+	panic("implement me")
+}
+
+func (n *Notice) Delete(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
+	panic("implement me")
+}
+
+func (n *Notice) Get(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
+	var notice schemas.Notice
+	notice.Name = "Joe!"
+	gomek.JSON(w, notice, http.StatusOK)
+}
+```
+To use your implementation of the `Resource` type
+```go
+app.Route("/notices").Resource(&routes.Notice{}).Methods("GET")
+```
+
 ### URL Path Variables
 ```go
 app.Route("/blogs/<blog_id>").View(GetBlogs).Methods("GET", "POST")
