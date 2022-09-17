@@ -97,11 +97,12 @@ func index(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
 	// .etc...
 ```
 
-# Restful approach
+### Restful approach
 ```go
+// Create a type that represents your resource
 type Notice struct {
 }
-
+// Implement the `Resource` interface
 func (n *Notice) Post(w http.ResponseWriter, request *http.Request, data *gomek.Data) {
 	panic("implement me")
 }
@@ -122,6 +123,7 @@ func (n *Notice) Get(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
 ```
 To use your implementation of the `Resource` type
 ```go
+// The Resource method expects a type that implements the `Resource` interface.
 app.Route("/notices").Resource(&routes.Notice{}).Methods("GET")
 ```
 
