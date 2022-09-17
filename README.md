@@ -6,6 +6,7 @@ A minimal http framework that includes some useful tools. Inspired by Flask.
 - Views handle your data only e.g. no template logic (Single-responsibility principle).
 - Define HTTP methods per View method.
 - Middleware - add yor own middleware
+- Auth
 - Logging
 - CORS
 - JSON
