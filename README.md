@@ -55,7 +55,7 @@ func index(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
 func blog(w http.ResponseWriter, r *http.Request, data *gomek.Data) {
     var blog Blog
 	// query database then return JSON
-	gomek.JSON(w, blog)
+	gomek.JSON(w, blog, http.StatusOK)
 }
 ```
 
