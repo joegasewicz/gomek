@@ -61,6 +61,7 @@ type App struct {
 	middleware       []func(http.Handler) http.HandlerFunc
 	rootCtx          context.Context
 	authCtx          context.Context
+	server           *http.Server
 }
 
 func createAddr(a *App) string {
@@ -78,7 +79,7 @@ func (a *App) resetCurrentView() {
 //
 //	app = gomek.New(gomek.Config{})
 //	app.Start()
-func (a *App) Start() {
+func (a *App) Start() error {
 	var auth = map[string]string{}
 	// Set app context
 	a.rootCtx = context.Background()
@@ -133,7 +134,14 @@ func (a *App) Start() {
 	}
 	log.Printf("Starting server on %s://%s", a.Protocol, address)
 	// Start server...
-	server.ListenAndServe()
+	a.server = server
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Println("error starting gomek server", err)
+	} else {
+		log.Printf("Starting server on %s://%s", a.Protocol, address)
+	}
+	return err
 }
 
 // Listen sets the port the server will accept request on.
@@ -278,6 +286,16 @@ func (a *App) Resource(m Resource) *App {
 //	app.Use(gomek.CORS)
 func (a *App) Use(h func(http.Handler) http.HandlerFunc) {
 	a.middleware = append(a.middleware, h)
+}
+
+// Shutdown force shutdown of the mux server
+//
+//	app.Shutdown()
+func (a *App) Shutdown() {
+	err := a.server.Shutdown(a.rootCtx)
+	if err != nil {
+		log.Fatalln("error shutting down", err)
+	}
 }
 
 // Args access the request arguments in a handler as a map
