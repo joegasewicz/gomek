@@ -24,7 +24,9 @@ func Logging(next http.Handler) http.HandlerFunc {
 		} else {
 			status = sw.status
 		}
-		fmt.Printf("[INFO] %s %s %ds Status: %d\n", r.Method, r.RequestURI, duration, status)
+		msg := fmt.Sprintf("[INFO] %s %s %ds Status: %d\n", r.Method, r.RequestURI, duration, status)
+		c := PrintWithColor(msg, BLUE)
+		fmt.Printf(c)
 		next.ServeHTTP(&sw, r)
 	})
 }
