@@ -7,27 +7,33 @@ import (
 	"time"
 )
 
-type statusWriter struct {
+type StatusCode struct {
 	http.ResponseWriter
-	status int
+	Status int
+}
+
+func (w *StatusCode) Set(status int) {
+	w.Status = status
+	w.ResponseWriter.WriteHeader(status)
 }
 
 // Logging adds logging for each request
 func Logging(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		sw := statusWriter{ResponseWriter: w}
+		sw := StatusCode{ResponseWriter: w}
 		// Log response
 		duration := time.Duration(time.Now().Sub(start)) * time.Nanosecond
 		var status int
-		if sw.status == 0 {
+		if sw.Status == 0 {
 			status = 200
 		} else {
-			status = sw.status
+			status = sw.Status
 		}
+		fmt.Println("status -----> ", status)
 		msg := fmt.Sprintf("[INFO] %s %s %ds Status: %d\n", r.Method, r.RequestURI, duration, status)
-		c := PrintWithColor(msg, BLUE)
-		fmt.Printf(c)
+		out := PrintWithColor(msg, BLUE)
+		fmt.Printf(out)
 		next.ServeHTTP(&sw, r)
 	})
 }
@@ -96,9 +102,7 @@ func Authorize(whiteList [][]string, callback func() bool) func(next http.Handle
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if ok := allowRoute(whiteList, r.RequestURI, r.Method); !ok {
 				// This route is not whitelisted so perform test from callback
-				if ok := callback(); ok {
-					next.ServeHTTP(w, r)
-				} else {
+				if ok := callback(); !ok {
 					w.WriteHeader(http.StatusUnauthorized)
 					return
 				}
