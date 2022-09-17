@@ -118,7 +118,7 @@ and a callback function to test the your auth strategy (e.g session  or JWT).
 ```go
 app.Use(gomek.Authorize(whiteList, func() {
     // Add your session / JWT test logic here.
-	// Return here if your auth logic fails.
+	// Return here true if your auth test passes & false if it fails
 }))
 ```
 
