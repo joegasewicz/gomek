@@ -1,7 +1,7 @@
 # Gomek
 A minimal http framework that includes some useful tools. Inspired by Flask.
 
-*Production ready in v1.0.0*
+⚠️ *Production ready in v1.0.0*
 
 ## Features
 - Easy to learn API.
