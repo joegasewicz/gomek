@@ -98,6 +98,29 @@ func index(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
 	// .etc...
 ```
 
+### Authorisation
+If you use the `gomek.Authorize` middleware, all your routes will need to pass authorization
+via the callback function passed to `gomek.Authorize`. To whitelist routes, pass a list of string
+pairs, representing the path and the request method, respectively.
+```go
+var whiteList = [][]string{
+		{
+			"/", "GET",
+		},
+		{
+			"/login", "GET",
+		},
+	}
+```
+The `gomek.Authorize` middleware function require 2 arguments, your `[][]string` of path / request methods
+and a callback function to test the your auth strategy (e.g session  or JWT).
+```go
+app.Use(gomek.Authorize(whiteList, func() {
+    // Add your session / JWT test logic here.
+	// Return here if your auth logic fails.
+}))
+```
+
 ### Restful approach
 ```go
 // Create a type that represents your resource
