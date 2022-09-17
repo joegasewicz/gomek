@@ -11,6 +11,7 @@ type statusWriter struct {
 	status int
 }
 
+// Logging adds logging for each request
 func Logging(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -25,5 +26,23 @@ func Logging(next http.Handler) http.HandlerFunc {
 		}
 		fmt.Printf("[INFO] %s %s %ds Status: %d\n", r.Method, r.RequestURI, duration, status)
 		next.ServeHTTP(&sw, r)
+	})
+}
+
+func setHeaders(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "*")
+}
+
+// CORS basic development cors
+func CORS(next http.Handler) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setHeaders(w)
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }

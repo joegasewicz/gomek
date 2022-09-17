@@ -30,7 +30,8 @@ app := gomek.New(c)
 // Declare your views
 app.Route("/blog").View(blog).Methods("GET", "POST").Templates("./templates/blog.gohtml")
 // Add middleware
-app.Use(gomek.CORS) // Use gomek's CORS or any other third party package
+app.Use(gomek.Logging) // Use gomek's Logging
+app.Use(gomek.CORS) // Use gomek's CORS
 // Set a port (optional)
 app.Listen(6011)
 // Start your app
@@ -97,11 +98,12 @@ func index(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
 	// .etc...
 ```
 
-# Restful approach
+### Restful approach
 ```go
+// Create a type that represents your resource
 type Notice struct {
 }
-
+// Implement the `Resource` interface
 func (n *Notice) Post(w http.ResponseWriter, request *http.Request, data *gomek.Data) {
 	panic("implement me")
 }
@@ -122,6 +124,7 @@ func (n *Notice) Get(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
 ```
 To use your implementation of the `Resource` type
 ```go
+// The Resource method expects a type that implements the `Resource` interface.
 app.Route("/notices").Resource(&routes.Notice{}).Methods("GET")
 ```
 

@@ -31,9 +31,11 @@ func (v *View) Create(a *App, view View) {
 	}
 	// Add middleware
 	var wrappedHandler http.HandlerFunc
+	wrappedHandler = v.handleFuncWrapper(finalTemplates, a, view.CurrentView)
+
 	for _, m := range a.middleware {
 		if m != nil {
-			wrappedHandler = m(v.handleFuncWrapper(finalTemplates, a, view.CurrentView))
+			wrappedHandler = m(wrappedHandler)
 		}
 	}
 
