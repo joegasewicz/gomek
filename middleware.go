@@ -11,6 +11,7 @@ import (
 // Logging adds logging for each request
 func Logging(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var out string
 		start := time.Now()
 		// Log response
 		duration := time.Duration(time.Now().Sub(start)) * time.Nanosecond
@@ -20,7 +21,12 @@ func Logging(next http.Handler) http.HandlerFunc {
 		next.ServeHTTP(sw, r)
 		statusCode := sw.Status
 		msg := fmt.Sprintf("[INFO] %s %s %ds Status: %d\n", r.Method, r.RequestURI, duration, statusCode)
-		out := PrintWithColor(msg, BLUE)
+
+		if statusCode < 400 {
+			out = PrintWithColor(msg, BLUE)
+		} else {
+			out = PrintWithColor(msg, RED)
+		}
 		fmt.Printf(out)
 	})
 }
