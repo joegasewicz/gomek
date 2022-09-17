@@ -2,39 +2,26 @@ package gomek
 
 import (
 	"fmt"
+	"github.com/joegasewicz/status-writer"
 	"net/http"
 	"strings"
 	"time"
 )
 
-type StatusCode struct {
-	http.ResponseWriter
-	Status int
-}
-
-func (w *StatusCode) Set(status int) {
-	w.Status = status
-	w.ResponseWriter.WriteHeader(status)
-}
-
 // Logging adds logging for each request
 func Logging(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		sw := StatusCode{ResponseWriter: w}
 		// Log response
 		duration := time.Duration(time.Now().Sub(start)) * time.Nanosecond
-		var status int
-		if sw.Status == 0 {
-			status = 200
-		} else {
-			status = sw.Status
-		}
-		fmt.Println("status -----> ", status)
-		msg := fmt.Sprintf("[INFO] %s %s %ds Status: %d\n", r.Method, r.RequestURI, duration, status)
+
+		// Set status
+		sw := status_writer.New(w)
+		next.ServeHTTP(sw, r)
+		statusCode := sw.Status
+		msg := fmt.Sprintf("[INFO] %s %s %ds Status: %d\n", r.Method, r.RequestURI, duration, statusCode)
 		out := PrintWithColor(msg, BLUE)
 		fmt.Printf(out)
-		next.ServeHTTP(&sw, r)
 	})
 }
 
