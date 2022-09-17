@@ -30,7 +30,8 @@ app := gomek.New(c)
 // Declare your views
 app.Route("/blog").View(blog).Methods("GET", "POST").Templates("./templates/blog.gohtml")
 // Add middleware
-app.Use(gomek.CORS) // Use gomek's CORS or any other third party package
+app.Use(gomek.Logging) // Use gomek's Logging
+app.Use(gomek.CORS) // Use gomek's CORS
 // Set a port (optional)
 app.Listen(6011)
 // Start your app
