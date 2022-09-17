@@ -2,33 +2,26 @@ package gomek
 
 import (
 	"fmt"
+	"github.com/joegasewicz/status-writer"
 	"net/http"
 	"strings"
 	"time"
 )
 
-type statusWriter struct {
-	http.ResponseWriter
-	status int
-}
-
 // Logging adds logging for each request
 func Logging(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		sw := statusWriter{ResponseWriter: w}
 		// Log response
 		duration := time.Duration(time.Now().Sub(start)) * time.Nanosecond
-		var status int
-		if sw.status == 0 {
-			status = 200
-		} else {
-			status = sw.status
-		}
-		msg := fmt.Sprintf("[INFO] %s %s %ds Status: %d\n", r.Method, r.RequestURI, duration, status)
-		c := PrintWithColor(msg, BLUE)
-		fmt.Printf(c)
-		next.ServeHTTP(&sw, r)
+
+		// Set status
+		sw := status_writer.New(w)
+		next.ServeHTTP(sw, r)
+		statusCode := sw.Status
+		msg := fmt.Sprintf("[INFO] %s %s %ds Status: %d\n", r.Method, r.RequestURI, duration, statusCode)
+		out := PrintWithColor(msg, BLUE)
+		fmt.Printf(out)
 	})
 }
 
@@ -96,9 +89,7 @@ func Authorize(whiteList [][]string, callback func() bool) func(next http.Handle
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if ok := allowRoute(whiteList, r.RequestURI, r.Method); !ok {
 				// This route is not whitelisted so perform test from callback
-				if ok := callback(); ok {
-					next.ServeHTTP(w, r)
-				} else {
+				if ok := callback(); !ok {
 					w.WriteHeader(http.StatusUnauthorized)
 					return
 				}
