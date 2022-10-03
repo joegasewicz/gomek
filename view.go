@@ -156,24 +156,7 @@ func (v *View) StoreResource(a *App) {
 	if a.currentResource != nil {
 		var methods []string
 		for _, m := range a.currentMethods {
-			switch {
-			case m == "DELETE":
-				{
-					methods = append(methods, "DELETE")
-				}
-			case m == "GET":
-				{
-					methods = append(methods, "GET")
-				}
-			case m == "POST":
-				{
-					methods = append(methods, "POST")
-				}
-			case m == "PUT":
-				{
-					methods = append(methods, "PUT")
-				}
-			}
+			methods = append(methods, m)
 		}
 		// Build a handler that conditionally evokes the resource methods
 		a.currentView = v.createHandlerFromResource(
