@@ -116,12 +116,19 @@ var whiteList = [][]string{
 	}
 ```
 The `gomek.Authorize` middleware function require 2 arguments, your `[][]string` of path / request methods
-and a callback function to test the your auth strategy (e.g session  or JWT).
+and a callback function to test your auth strategy (e.g. session  or JWT).
 ```go
-app.Use(gomek.Authorize(whiteList, func() {
-    // Add your session / JWT test logic here.
-	// Return true if your auth test passes & false if it fails
-	return true
+app.Use(gomek.Authorize(whiteList, func(r *http.Request) (bool, context.Context) {
+    // if your authorization test passes then return true
+    return true, nil
+}))
+```
+You can also attach values of any type to the request context
+```go
+app.Use(gomek.Authorize(whiteList, func(r *http.Request) (bool, context.Context) {
+    // You can attach values to the request context & returning the context also
+    ctx := context.WithValue(r.Context(), "userID", 1)
+    return true, ctx
 }))
 ```
 
