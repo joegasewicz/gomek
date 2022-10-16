@@ -1,6 +1,7 @@
 package gomek
 
 import (
+	"context"
 	"fmt"
 	"github.com/joegasewicz/status-writer"
 	"net/http"
@@ -86,17 +87,33 @@ func allowRoute(routes [][]string, currentRoute string, reqMethod string) bool {
 //	The `gomek.Authorize` middleware function require 2 arguments, your `[][]string` of path / request methods
 //	and a callback function to test your auth strategy (e.g. session  or JWT).
 //
-//				app.Use(gomek.Authorize(whiteList, func() {
-//	   				// Add your session / JWT test logic here.
-//					// Return here if your auth logic fails.
-//				}))
-func Authorize(whiteList [][]string, callback func() bool) func(next http.Handler) http.HandlerFunc {
+//			app.Use(gomek.Authorize(whiteList, func(r *http.Request) (bool, context.Context) {
+//				// if your authorization test passes then return true
+//				return true, nil
+//			}))
+//
+//	The `gomek.Authorize` middleware function require 2 arguments, your `[][]string` of path / request methods
+//	and a callback function to test your auth strategy (e.g. session  or JWT).
+//
+//			app.Use(gomek.Authorize(whiteList, func(r *http.Request) (bool, context.Context) {
+//				// You can attach values to the request context & returning the context also
+//				ctx := context.WithValue(r.Context(), "userID", 1)
+//				return true, ctx
+//			}))
+func Authorize(whiteList [][]string, callback func(r *http.Request) (bool, context.Context)) func(next http.Handler) http.HandlerFunc {
 	inner := func(next http.Handler) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if ok := allowRoute(whiteList, r.RequestURI, r.Method); !ok {
+			var ctx context.Context
+			ok := allowRoute(whiteList, r.RequestURI, r.Method)
+			if !ok {
 				// This route is not whitelisted so perform test from callback
-				if ok := callback(); !ok {
+				ok, ctx = callback(r)
+				if !ok {
 					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				if ctx != nil {
+					next.ServeHTTP(w, r.WithContext(ctx))
 					return
 				}
 			}
