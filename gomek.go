@@ -87,6 +87,23 @@ func (a *App) Start() error {
 	// Store the last registered view
 	if a.currentResource != nil {
 		a.view.StoreResource(a)
+		// Duplicate the resource methods for /<path_name>/ to /<path_name>
+		// This is because Go's http package swaps out POSTs to GETS with a /<path_name>/ path.
+		if a.currentRoute[len(a.currentRoute)-1:] == ">" {
+			for _, m := range a.currentMethods {
+				if m == "POST" {
+					// Construct a path name from the stored `registeredRoute` value
+					for _, storedView := range a.view.StoredViews {
+						if storedView.registeredRoute == a.currentRoute {
+							// Create a route without the slash at the parth end e.g /<path_name>
+							a.currentRoute = fmt.Sprintf("/%s", storedView.rootName)
+							a.view.StoreResource(a)
+						}
+					}
+					break
+				}
+			}
+		}
 	} else {
 		a.view.Store(a)
 	}
