@@ -129,6 +129,7 @@ func (v *View) handleFuncWrapper(templates []string, a *App, currentView Current
 }
 
 func (v *View) createHandlerFromResource(delete, get, post, put CurrentView) CurrentView {
+	// Creates a single handler with a switch to call each resource declared function
 	return func(w http.ResponseWriter, r *http.Request, d *Data) {
 		switch r.Method {
 		case "DELETE":
@@ -186,7 +187,7 @@ func (v *View) Store(a *App) {
 				// Swap the caller's current route to registeredRoute
 				c.registeredRoute = a.currentRoute
 				// Register routes by storing route metadata in a View type
-				// If a route has path variables, then set the route as the first path segment e.g /blogs/
+				// If a route has path variables, then set the route as the first path segment e.g /blogs
 				c.CurrentRoute = fmt.Sprintf("/%s/", r[1])
 				// Save the path segments in slices of string, then we can match the path variables against incoming request
 				c.routePaths = r[1:]
@@ -195,5 +196,6 @@ func (v *View) Store(a *App) {
 			}
 		}
 	}
+
 	v.StoredViews = append(v.StoredViews, c)
 }
