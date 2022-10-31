@@ -75,6 +75,26 @@ func (a *App) resetCurrentView() {
 	a.currentView = nil
 }
 
+func (a *App) cloneRoute() {
+	// Duplicate the resource methods for /<path_name>/ to /<path_name>
+	// This is because Go's http package swaps out POSTs to GETS with a /<path_name>/ path.
+	if a.currentRoute[len(a.currentRoute)-1:] == ">" {
+		for _, m := range a.currentMethods {
+			if m == "POST" {
+				// Construct a path name from the stored `registeredRoute` value
+				for _, storedView := range a.view.StoredViews {
+					if storedView.registeredRoute == a.currentRoute {
+						// Create a route without the slash at the parth end e.g /<path_name>
+						a.currentRoute = fmt.Sprintf("/%s", storedView.rootName)
+						a.view.StoreResource(a)
+					}
+				}
+				break
+			}
+		}
+	}
+}
+
 // Start sets up all the registered views, templates & middleware
 //
 //	app = gomek.New(gomek.Config{})
@@ -89,21 +109,7 @@ func (a *App) Start() error {
 		a.view.StoreResource(a)
 		// Duplicate the resource methods for /<path_name>/ to /<path_name>
 		// This is because Go's http package swaps out POSTs to GETS with a /<path_name>/ path.
-		if a.currentRoute[len(a.currentRoute)-1:] == ">" {
-			for _, m := range a.currentMethods {
-				if m == "POST" {
-					// Construct a path name from the stored `registeredRoute` value
-					for _, storedView := range a.view.StoredViews {
-						if storedView.registeredRoute == a.currentRoute {
-							// Create a route without the slash at the parth end e.g /<path_name>
-							a.currentRoute = fmt.Sprintf("/%s", storedView.rootName)
-							a.view.StoreResource(a)
-						}
-					}
-					break
-				}
-			}
-		}
+		a.cloneRoute()
 	} else {
 		a.view.Store(a)
 	}
@@ -195,6 +201,7 @@ func (a *App) Route(route string) *App {
 		// Store the previous view to lazily register them at run time
 		if a.currentResource != nil {
 			a.view.StoreResource(a)
+			a.cloneRoute()
 		} else {
 			a.view.Store(a)
 		}
