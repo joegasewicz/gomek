@@ -2,6 +2,7 @@ package gomek
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -330,4 +331,14 @@ func Args(r *http.Request) map[string]string {
 		return vars.(map[string]string)
 	}
 	return nil
+}
+
+func QueryParams(r *http.Request, name string) (interface{}, error) {
+	params := r.URL.Query()
+	paramValue, present := params[name]
+	if !present || len(paramValue) == 0 {
+		log.Println("no noticeboardID in params")
+		return nil, errors.New("param not" + name + " present")
+	}
+	return paramValue, nil
 }
