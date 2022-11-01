@@ -2,6 +2,7 @@ package gomek
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -330,4 +331,23 @@ func Args(r *http.Request) map[string]string {
 		return vars.(map[string]string)
 	}
 	return nil
+}
+
+// GetParams returns slices of string
+//
+//	// example request url - http://127.0.0.1:8080/users?user_id=1
+//	userID, err := gomek.QueryParams(r, "user_id")
+//	if err != nil {
+//		log.Println("no user_id in params")
+//		return
+//	}
+//	// userID[0] = "1"
+func GetParams(r *http.Request, name string) ([]string, error) {
+	params := r.URL.Query()
+	paramValue, present := params[name]
+	if !present || len(paramValue) == 0 {
+		log.Println("no noticeboardID in params")
+		return nil, errors.New("param not" + name + " present")
+	}
+	return paramValue, nil
 }

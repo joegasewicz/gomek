@@ -171,7 +171,20 @@ func GetBlogs(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
     advertId := vars["blog_id"]
 ```
 
+### Query Params
+GetParams returns slices of string
+```go
+// example request url - http://127.0.0.1:8080/users?user_id=1
+userID, err := gomek.QueryParams(r, "user_id")
+if err != nil {
+	log.Println("no user_id in params")
+	return
+}
+// userID[0] = "1"
+```
+
 ### Static Files
+**Not specific to Gomek (example implements the standard library's static files setup)
 ```go
 app := gomek.New(gomek.Config{})
 publicFiles := http.FileServer(http.Dir("public"))
