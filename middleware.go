@@ -53,16 +53,24 @@ func CORS(next http.Handler) http.HandlerFunc {
 func allowRoute(routes [][]string, currentRoute string, reqMethod string) bool {
 	for _, r := range routes {
 		route, method := r[0], r[1]
+
+		// Handle query params
+		currentRouteParamsRemoved := strings.Split(currentRoute, "?")
+		if len(currentRouteParamsRemoved) > 1 {
+			if currentRouteParamsRemoved[0] == "/" {
+				// So we don't add an extra "/" to a single "/" route
+				currentRoute = currentRouteParamsRemoved[0]
+			} else {
+				// Add an extra "/" to the end of the match for testing
+				currentRoute = currentRouteParamsRemoved[0] + "/"
+			}
+		}
+
+		// Handle "*"
 		splitPath := strings.Split(route, "*")
 		if len(splitPath) == 2 {
 			// matchEndPath is the last path segment before the '/*'
 			matchEndPath := splitPath[0]
-			// Check current route for query params
-			currentRouteParamsRemoved := strings.Split(currentRoute, "?")
-			if len(currentRouteParamsRemoved) != 0 {
-				// Add a "/" to match the match end point
-				currentRoute = currentRouteParamsRemoved[0] + "/"
-			}
 			// matchEndPath should match the first part of the current route
 			currentRouteMatch := strings.Split(currentRoute, matchEndPath)
 			if currentRouteMatch[0] == "" && method == reqMethod {
