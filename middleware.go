@@ -57,6 +57,12 @@ func allowRoute(routes [][]string, currentRoute string, reqMethod string) bool {
 		if len(splitPath) == 2 {
 			// matchEndPath is the last path segment before the '/*'
 			matchEndPath := splitPath[0]
+			// Check current route for query params
+			currentRouteParamsRemoved := strings.Split(currentRoute, "?")
+			if len(currentRouteParamsRemoved) != 0 {
+				// Add a "/" to match the match end point
+				currentRoute = currentRouteParamsRemoved[0] + "/"
+			}
 			// matchEndPath should match the first part of the current route
 			currentRouteMatch := strings.Split(currentRoute, matchEndPath)
 			if currentRouteMatch[0] == "" && method == reqMethod {
