@@ -183,6 +183,13 @@ if err != nil {
 // userID[0] = "1"
 ```
 
+### Set Host
+Set the machine's host
+```go
+app.SetHost("127.0.0.1")
+```
+
+
 ### Static Files
 **Not specific to Gomek (example implements the standard library's static files setup)
 ```go
