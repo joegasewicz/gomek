@@ -156,7 +156,7 @@ func (a *App) Start() error {
 		BaseContext:       nil,
 		ConnContext:       nil,
 	}
-	log.Printf("Starting server on %s://%s", a.Protocol, address)
+	log.Printf("Starting server on %s://%s", a.Protocol, server.Addr)
 	// Start server...
 	a.server = server
 	err := server.ListenAndServe()
