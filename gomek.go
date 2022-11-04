@@ -10,7 +10,7 @@ import (
 
 const (
 	DEFAULT_BASE_TEMPLATE = "layout"
-	DEFAULT_HOST          = "localhost"
+	DEFAULT_HOST          = ""
 	DEFAULT_PORT          = 5000
 	DEFAULT_PROTOCOL      = "http"
 )
@@ -156,7 +156,7 @@ func (a *App) Start() error {
 		BaseContext:       nil,
 		ConnContext:       nil,
 	}
-	log.Printf("Starting server on %s://%s", a.Protocol, address)
+	log.Printf("Starting server on %s://%s", a.Protocol, server.Addr)
 	// Start server...
 	a.server = server
 	err := server.ListenAndServe()
@@ -166,6 +166,14 @@ func (a *App) Start() error {
 		log.Printf("Starting server on %s://%s", a.Protocol, address)
 	}
 	return err
+}
+
+// SetHost sets the host. Default is ":"
+// If no port is set, then Gomek will default to `5000`
+//
+//	app.SetHost("localhost")
+func (a *App) SetHost(host string) {
+	a.Host = host
 }
 
 // Listen sets the port the server will accept request on.
