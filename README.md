@@ -175,7 +175,7 @@ func GetBlogs(w http.ResponseWriter, r *http.Request, d *gomek.Data) {
 GetParams returns slices of string
 ```go
 // example request url - http://127.0.0.1:8080/users?user_id=1
-userID, err := gomek.QueryParams(r, "user_id")
+userID, err := gomek.GetParams(r, "user_id")
 if err != nil {
 	log.Println("no user_id in params")
 	return
