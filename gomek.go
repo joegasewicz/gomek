@@ -30,6 +30,8 @@ type CurrentView func(http.ResponseWriter, *http.Request, *Data)
 
 type Handle func(pattern string, handler http.Handler)
 
+type Middleware []func(http.Handler) http.HandlerFunc
+
 // Config type that should be passed to `gomek.New`
 type Config struct {
 	BaseTemplateName string
@@ -43,7 +45,24 @@ type Resource interface {
 	Put(http.ResponseWriter, *http.Request, *Data)
 }
 
-// App
+type IApp interface {
+	resetCurrentView()
+	cloneRoute()
+	Start() error
+	SetHost(host string)
+	Listen(port int)
+	Methods(methods ...string) *App
+	Route(route string) *App
+	Templates(templates ...string)
+	BaseTemplates(templates ...string)
+	View(view CurrentView) *App
+	Resource(m Resource) *App
+	Use(h func(http.Handler) http.HandlerFunc)
+	Shutdown()
+	GetView() *View
+	GetConfig() *Config
+}
+
 type App struct {
 	baseTemplateName string
 	baseTemplates    []string
@@ -59,7 +78,7 @@ type App struct {
 	Protocol         string
 	view             View
 	Handle           Handle
-	middleware       []func(http.Handler) http.HandlerFunc
+	middleware       Middleware
 	rootCtx          context.Context
 	authCtx          context.Context
 	server           *http.Server
@@ -69,38 +88,15 @@ func createAddr(a *App) string {
 	return fmt.Sprintf("%s:%d", a.Host, a.Port)
 }
 
-func (a *App) resetCurrentView() {
-	a.currentRoute = ""
-	a.currentMethods = nil
-	a.baseTemplates = nil
-	a.currentView = nil
+func (a *App) GetView() *View {
+	return &a.view
 }
 
-func (a *App) cloneRoute() {
-	// Duplicate the resource methods for /<path_name>/ to /<path_name>
-	// This is because Go's http package swaps out POSTs to GETS with a /<path_name>/ path.
-	if a.currentRoute[len(a.currentRoute)-1:] == ">" {
-		for _, m := range a.currentMethods {
-			if m == "POST" {
-				// Construct a path name from the stored `registeredRoute` value
-				for _, storedView := range a.view.StoredViews {
-					if storedView.registeredRoute == a.currentRoute {
-						// Create a route without the slash at the parth end e.g /<path_name>
-						a.currentRoute = fmt.Sprintf("/%s", storedView.rootName)
-						a.view.StoreResource(a)
-					}
-				}
-				break
-			}
-		}
-	}
+func (a *App) GetConfig() *Config {
+	return &a.Config
 }
 
-// Start sets up all the registered views, templates & middleware
-//
-//	app = gomek.New(gomek.Config{})
-//	app.Start()
-func (a *App) Start() error {
+func (a *App) setup() *http.Server {
 	var auth = map[string]string{}
 	// Set app context
 	a.rootCtx = context.Background()
@@ -135,13 +131,13 @@ func (a *App) Start() error {
 	//a.Use(Logging)
 	// Create views
 	for _, v := range a.view.StoredViews {
-		a.view.Create(a, v)
+		a.view.Create(&a.Config, &a.middleware, a.mux, v)
 	}
 
 	// Create the origin
 	address := createAddr(a)
 	// Server
-	server := &http.Server{
+	return &http.Server{
 		Addr:              address,
 		Handler:           a.mux,
 		TLSConfig:         nil,
@@ -156,16 +152,33 @@ func (a *App) Start() error {
 		BaseContext:       nil,
 		ConnContext:       nil,
 	}
-	log.Printf("Starting server on %s://%s", a.Protocol, server.Addr)
-	// Start server...
-	a.server = server
-	err := server.ListenAndServe()
-	if err != nil {
-		log.Println("error starting gomek server", err)
-	} else {
-		log.Printf("Starting server on %s://%s", a.Protocol, address)
+}
+
+func (a *App) resetCurrentView() {
+	a.currentRoute = ""
+	a.currentMethods = nil
+	a.baseTemplates = nil
+	a.currentView = nil
+}
+
+func (a *App) cloneRoute() {
+	// Duplicate the resource methods for /<path_name>/ to /<path_name>
+	// This is because Go's http package swaps out POSTs to GETS with a /<path_name>/ path.
+	if a.currentRoute[len(a.currentRoute)-1:] == ">" {
+		for _, m := range a.currentMethods {
+			if m == "POST" {
+				// Construct a path name from the stored `registeredRoute` value
+				for _, storedView := range a.view.StoredViews {
+					if storedView.registeredRoute == a.currentRoute {
+						// Create a route without the slash at the parth end e.g /<path_name>
+						a.currentRoute = fmt.Sprintf("/%s", storedView.rootName)
+						a.view.StoreResource(a)
+					}
+				}
+				break
+			}
+		}
 	}
-	return err
 }
 
 // SetHost sets the host. Default is ":"
@@ -245,19 +258,6 @@ func (a *App) Templates(templates ...string) {
 //	app.BaseTemplate(baseTemplates)
 func (a *App) BaseTemplates(templates ...string) {
 	a.Config.BaseTemplates = templates
-}
-
-// New creates a new gomek application
-//
-//	app := gomek.New(gomek.Config{})
-func New(config Config) App {
-	mux := http.NewServeMux()
-
-	return App{
-		Config: config,
-		mux:    mux,
-		Handle: mux.Handle,
-	}
 }
 
 // View is called if the Route request URL is matched.
@@ -358,4 +358,63 @@ func GetParams(r *http.Request, name string) ([]string, error) {
 		return nil, errors.New("param not" + name + " present")
 	}
 	return paramValue, nil
+}
+
+// App
+type _App struct {
+	*App
+}
+
+// Start sets up all the registered views, templates & middleware
+//
+//	app = gomek.New(gomek.Config{})
+//	app.Start()
+func (a *App) Start() error {
+	server := a.setup()
+	log.Printf("Starting server on %s://%s", a.Protocol, server.Addr)
+	// Start server...
+	a.server = a.setup()
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Println("error starting gomek server", err)
+	} else {
+		log.Printf("Starting server on %s://%s", a.Protocol, server.Addr)
+	}
+	return err
+}
+
+// New creates a new gomek application
+//
+//	app := gomek.New(gomek.Config{})
+func New(config Config) *App {
+	mux := http.NewServeMux()
+	return &App{
+		Config: config,
+		mux:    mux,
+		Handle: mux.Handle,
+	}
+}
+
+type TestApp struct {
+	App
+}
+
+// NewTestApp creates a new gomek application
+//
+//	app := gomek.NewTestApp(gomek.Config{})
+func NewTestApp(config Config) IApp {
+	mux := http.NewServeMux()
+	app := TestApp{
+		App{
+			Config: config,
+			mux:    mux,
+			Handle: mux.Handle,
+		},
+	}
+	return &app
+}
+
+func (a *TestApp) Start() error {
+	a.App.setup()
+	return nil
 }

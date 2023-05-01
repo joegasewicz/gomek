@@ -138,11 +138,11 @@ app.Use(gomek.Authorize(whiteList, func(r *http.Request) (bool, context.Context)
 type Notice struct {
 }
 // Implement the `Resource` interface
-func (n *Notice) Post(w http.ResponseWriter, request *http.Request, data *gomek.Data) {
+func (n *Notice) Post(w http.ResponseWriter, request *http.Request, d *gomek.Data) {
 	panic("implement me")
 }
 
-func (n *Notice) Put(w http.ResponseWriter, request *http.Request, data *gomek.Data) {
+func (n *Notice) Put(w http.ResponseWriter, request *http.Request, d *gomek.Data) {
 	panic("implement me")
 }
 

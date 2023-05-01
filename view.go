@@ -20,9 +20,24 @@ type View struct {
 	StoredViews      []View
 }
 
-func (v *View) Create(a *App, view View) {
+// NewTestView view testing util. Enables the testing of individual
+
+func NewTestView(views []View) View {
+	return View{
+		registeredRoute:  "",
+		routePaths:       nil,
+		rootName:         "",
+		CurrentRoute:     "/blogs",
+		CurrentMethods:   []string{"POST"},
+		CurrentTemplates: nil,
+		CurrentView:      nil,
+		StoredViews:      views,
+	}
+}
+
+func (v *View) Create(config *Config, middleware *Middleware, mux *http.ServeMux, view View) {
 	t := Template{
-		base: a.Config.BaseTemplates,
+		base: config.BaseTemplates,
 	}
 	// Add templates
 	finalTemplates := t.Run(view.CurrentTemplates...)
@@ -31,9 +46,9 @@ func (v *View) Create(a *App, view View) {
 	}
 	// Add middleware
 	var wrappedHandler http.HandlerFunc
-	wrappedHandler = v.handleFuncWrapper(finalTemplates, a, view.CurrentView)
+	wrappedHandler = v.handleFuncWrapper(finalTemplates, config, view, view.CurrentView)
 
-	for _, m := range a.middleware {
+	for _, m := range *middleware {
 		if m != nil {
 			wrappedHandler = m(wrappedHandler)
 		}
@@ -41,10 +56,10 @@ func (v *View) Create(a *App, view View) {
 
 	// In case there is an option to turn off all gomek default middleware
 	if wrappedHandler == nil {
-		wrappedHandler = v.handleFuncWrapper(finalTemplates, a, view.CurrentView)
+		wrappedHandler = v.handleFuncWrapper(finalTemplates, config, view, view.CurrentView)
 	}
 	// Create handler
-	a.mux.HandleFunc(view.CurrentRoute, wrappedHandler)
+	mux.HandleFunc(view.CurrentRoute, wrappedHandler)
 }
 
 func stripTokens(pathSegment string) string {
@@ -53,8 +68,8 @@ func stripTokens(pathSegment string) string {
 	return path[0]
 }
 
-func getView(r *http.Request, a *App) (*View, map[string]string, bool) {
-	for _, v := range a.view.StoredViews {
+func getView(r *http.Request, view View) (*View, map[string]string, bool) {
+	for _, v := range view.StoredViews {
 		if r.URL.Path == v.CurrentRoute {
 			return &v, nil, true
 		}
@@ -88,7 +103,7 @@ func testMethod(r *http.Request, v View) bool {
 	return false
 }
 
-func (v *View) handleFuncWrapper(templates []string, a *App, currentView CurrentView) http.HandlerFunc {
+func (v *View) handleFuncWrapper(templates []string, config *Config, view View, currentView CurrentView) http.HandlerFunc {
 	var data Data
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
@@ -97,7 +112,7 @@ func (v *View) handleFuncWrapper(templates []string, a *App, currentView Current
 			vars          map[string]string
 		)
 		// Route
-		if v, viewVars, ok := getView(r, a); ok {
+		if v, viewVars, ok := getView(r, view); ok {
 			vars = viewVars
 			routeMatches = true
 			// Methods
@@ -120,7 +135,7 @@ func (v *View) handleFuncWrapper(templates []string, a *App, currentView Current
 			if err != nil {
 				log.Fatalf("Error parsing templates: %v", err.Error())
 			}
-			te.ExecuteTemplate(w, a.Config.BaseTemplateName, data)
+			te.ExecuteTemplate(w, config.BaseTemplateName, data)
 		} else {
 			// No templates so treat as JSON / TEXT
 			r.Header.Set("Content-Type", "application/json")
