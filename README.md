@@ -197,3 +197,30 @@ app := gomek.New(gomek.Config{})
 publicFiles := http.FileServer(http.Dir("public"))
 app.Handle("/public/", http.StripPrefix("/public/", publicFiles))
 ```
+
+# Testing
+Gomek provides a testing utility that returns a regular `HandlerFunc`
+```go
+c := Config{}
+mockApp := NewTestApp(c)
+mockApp.Route("/blogs").Methods("POST").Resource(&Notice{})
+mockApp.Start()
+
+notice := Notice{}
+
+handler := CreateTestHandler(mockApp, notice.Post)
+
+req := httptest.NewRequest(http.MethodPost, "/blogs", nil)
+w := httptest.NewRecorder()
+handler(w, req) // regular HandlerFunc
+resp := w.Result()
+
+defer resp.Body.Close()
+data, err := io.ReadAll(resp.Body)
+if err != nil {
+t.Errorf("Error: %v", err)
+}
+expected := `{"name":"Joe"}`
+if string(data) != expected {
+t.Errorf("Expected %s got '%v'", expected, string(data))
+```
