@@ -200,6 +200,7 @@ app.Handle("/public/", http.StripPrefix("/public/", publicFiles))
 
 # Testing
 Gomek provides a testing utility that returns a regular `HandlerFunc`
+- `gomek.CreateTestHandler`
 ```go
 c := Config{}
 mockApp := NewTestApp(c)
@@ -208,7 +209,7 @@ mockApp.Start()
 
 notice := Notice{}
 
-handler := CreateTestHandler(mockApp, notice.Post)
+handler := gomek.CreateTestHandler(mockApp, notice.Post)
 
 req := httptest.NewRequest(http.MethodPost, "/blogs", nil)
 w := httptest.NewRecorder()
@@ -218,7 +219,7 @@ resp := w.Result()
 defer resp.Body.Close()
 data, err := io.ReadAll(resp.Body)
 if err != nil {
-t.Errorf("Error: %v", err)
+    t.Errorf("Error: %v", err)
 }
 expected := `{"name":"Joe"}`
 if string(data) != expected {
