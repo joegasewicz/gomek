@@ -213,7 +213,7 @@ func (a *App) Methods(methods ...string) *App {
 
 // Route A string representing the incoming request URL.
 // This is the first argument to Gomek's mux.Route() method or the first
-// argument to http.HandleFunc(). For Example:
+// argument to http.HandleFunc(). For Example
 //
 //	app.Route("/") // ... other chained methods
 func (a *App) Route(route string) *App {
