@@ -110,6 +110,9 @@ func (a *App) setup() *http.Server {
 	} else {
 		a.view.Store(a)
 	}
+	if len(a.currentMethods) < 1 {
+		a.currentMethods = DEFAULT_METHODS
+	}
 	a.resetCurrentView()
 	// Handle defaults
 	if a.Config.BaseTemplateName == "" {
@@ -124,11 +127,6 @@ func (a *App) setup() *http.Server {
 	if a.Protocol == "" {
 		a.Protocol = DEFAULT_PROTOCOL
 	}
-	if len(a.currentMethods) < 1 {
-		a.currentMethods = DEFAULT_METHODS
-	}
-	// Add default middleware
-	//a.Use(Logging)
 	// Create views
 	for _, v := range a.view.StoredViews {
 		a.view.Create(&a.Config, &a.middleware, a.mux, v)
@@ -215,7 +213,7 @@ func (a *App) Methods(methods ...string) *App {
 
 // Route A string representing the incoming request URL.
 // This is the first argument to Gomek's mux.Route() method or the first
-// argument to http.HandleFunc(). For Example:
+// argument to http.HandleFunc(). For Example
 //
 //	app.Route("/") // ... other chained methods
 func (a *App) Route(route string) *App {
@@ -223,7 +221,7 @@ func (a *App) Route(route string) *App {
 		// Store the previous view to lazily register them at run time
 		if a.currentResource != nil {
 			a.view.StoreResource(a)
-			a.cloneRoute()
+			//a.cloneRoute()
 		} else {
 			a.view.Store(a)
 		}
@@ -370,15 +368,14 @@ type _App struct {
 //	app = gomek.New(gomek.Config{})
 //	app.Start()
 func (a *App) Start() error {
-	server := a.setup()
-	log.Printf("Starting server on %s://%s", a.Protocol, server.Addr)
 	// Start server...
 	a.server = a.setup()
-	err := server.ListenAndServe()
+	log.Printf("Starting server on %s://%s", a.Protocol, a.server.Addr)
+	err := a.server.ListenAndServe()
 	if err != nil {
 		log.Println("error starting gomek server", err)
 	} else {
-		log.Printf("Starting server on %s://%s", a.Protocol, server.Addr)
+		log.Printf("Starting server on %s://%s", a.Protocol, a.server.Addr)
 	}
 	return err
 }
