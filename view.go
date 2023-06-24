@@ -42,7 +42,7 @@ func (v *View) Create(config *Config, middleware *Middleware, mux *http.ServeMux
 	// Add templates
 	finalTemplates := t.Run(view.CurrentTemplates...)
 	if len(finalTemplates) > 0 {
-		log.Printf("%s: %s\n", view.CurrentRoute, finalTemplates)
+		log.Printf("Registering templates: %s: %s\n", view.CurrentRoute, finalTemplates)
 	}
 	// Add middleware
 	var wrappedHandler http.HandlerFunc
@@ -68,25 +68,34 @@ func stripTokens(pathSegment string) string {
 	return path[0]
 }
 
-func getView(r *http.Request, view View) (*View, map[string]string, bool) {
-	for _, v := range view.StoredViews {
-		if r.URL.Path == v.CurrentRoute {
-			return &v, nil, true
-		}
-		// Check the path variables
-		urlPaths := strings.Split(r.URL.Path, "/")[1:]
-		// Check the root paths are the same
-		if v.rootName == urlPaths[0] {
-			// If this is just a single root/<arg> then return matched
-			if len(urlPaths) == 2 {
-				vars := map[string]string{
-					stripTokens(v.routePaths[1]): urlPaths[1],
-				}
-				return &v, vars, true
+func parseView(r *http.Request, view View) (*View, map[string]string, bool) {
+	if r.URL.Path == view.CurrentRoute {
+		return &view, nil, true
+	}
+	// Check the path variables
+	urlPaths := strings.Split(r.URL.Path, "/")[1:]
+	// Check the root paths are the same
+	if view.rootName == urlPaths[0] {
+		// If this is just a single root/<arg> then return matched
+		if len(urlPaths) == 2 {
+			vars := map[string]string{
+				stripTokens(view.routePaths[1]): urlPaths[1],
 			}
+			return &view, vars, true
 		}
 	}
 	return nil, nil, false
+}
+
+func getView(r *http.Request, view View) (vv *View, mm map[string]string, b bool) {
+	if view.CurrentView != nil {
+		vv, mm, b = parseView(r, view)
+	}
+
+	for _, v := range view.StoredViews {
+		vv, mm, b = parseView(r, v)
+	}
+	return vv, mm, b
 }
 
 func setViewVars(r *http.Request, vars map[string]string) *http.Request {
