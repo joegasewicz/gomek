@@ -36,6 +36,12 @@ func NewTestView(views []View) View {
 }
 
 func (v *View) Create(config *Config, middleware *Middleware, mux *http.ServeMux, view View) {
+	// Validate view
+	if view.CurrentRoute == "" {
+		log.Println("Route is not set")
+		return
+	}
+
 	t := Template{
 		base: config.BaseTemplates,
 	}
