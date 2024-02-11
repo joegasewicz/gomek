@@ -10,7 +10,7 @@ import (
 
 const (
 	DEFAULT_BASE_TEMPLATE = "layout"
-	DEFAULT_HOST          = ""
+	DEFAULT_HOST          = "localhost"
 	DEFAULT_PORT          = 5000
 	DEFAULT_PROTOCOL      = "http"
 )
