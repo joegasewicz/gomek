@@ -1,4 +1,5 @@
-# Gomek
+![Gomek](assets/gomek-logo.png?raw=true "Locksmith")
+
 A minimal http framework that includes some useful tools. Inspired by Flask.
 
 ⚠️ *Production ready in v1.0.0*
