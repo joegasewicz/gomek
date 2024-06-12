@@ -72,7 +72,7 @@ type App struct {
 	currentTemplates []string
 	currentView      CurrentView
 	currentResource  Resource
-	mux              *http.ServeMux
+	Mux              *http.ServeMux
 	Host             string
 	Port             int
 	Protocol         string
@@ -129,7 +129,7 @@ func (a *App) setup() *http.Server {
 	}
 	// Create views
 	for _, v := range a.view.StoredViews {
-		a.view.Create(&a.Config, &a.middleware, a.mux, v)
+		a.view.Create(&a.Config, &a.middleware, a.Mux, v)
 	}
 
 	// Create the origin
@@ -137,7 +137,7 @@ func (a *App) setup() *http.Server {
 	// Server
 	return &http.Server{
 		Addr:              address,
-		Handler:           a.mux,
+		Handler:           a.Mux,
 		TLSConfig:         nil,
 		ReadTimeout:       0,
 		ReadHeaderTimeout: 0,
@@ -212,7 +212,7 @@ func (a *App) Methods(methods ...string) *App {
 }
 
 // Route A string representing the incoming request URL.
-// This is the first argument to Gomek's mux.Route() method or the first
+// This is the first argument to Gomek's Mux.Route() method or the first
 // argument to http.HandleFunc(). For Example
 //
 //	app.Route("/") // ... other chained methods
@@ -319,7 +319,7 @@ func (a *App) Use(h func(http.Handler) http.HandlerFunc) {
 	a.middleware = append(a.middleware, h)
 }
 
-// Shutdown force shutdown of the mux server
+// Shutdown force shutdown of the Mux server
 //
 //	app.Shutdown()
 func (a *App) Shutdown() {
@@ -387,7 +387,7 @@ func New(config Config) *App {
 	mux := http.NewServeMux()
 	return &App{
 		Config: config,
-		mux:    mux,
+		Mux:    mux,
 		Handle: mux.Handle,
 	}
 }
@@ -404,7 +404,7 @@ func NewTestApp(config Config) IApp {
 	app := TestApp{
 		App{
 			Config: config,
-			mux:    mux,
+			Mux:    mux,
 			Handle: mux.Handle,
 		},
 	}
