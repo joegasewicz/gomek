@@ -1,4 +1,4 @@
-![Gomek](assets/gomek-logo.png?raw=true "Locksmith")
+![Gomek](assets/gomek.png?raw=true "Gomek")
 
 A minimal http framework that includes some useful tools. Inspired by Flask.
 
