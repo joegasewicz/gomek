@@ -9,52 +9,64 @@ import (
 	"strings"
 )
 
+type ViewTemplate struct {
+	Route     string
+	Templates []string
+}
+
 type View struct {
-	registeredRoute  string
-	routePaths       []string
-	rootName         string
-	CurrentRoute     string
-	CurrentMethods   []string
-	CurrentTemplates []string
-	CurrentView      CurrentView
-	StoredViews      []View
+	registeredRoute string
+	routePaths      []string
+	rootName        string
+	Route           string
+	Methods         []string
+	Templates       []string
+	View            CurrentView
+	StoredViews     []View
 }
 
 // NewTestView view testing util. Enables the testing of individual
 
 func NewTestView(views []View) View {
 	return View{
-		registeredRoute:  "",
-		routePaths:       nil,
-		rootName:         "",
-		CurrentRoute:     "/blogs",
-		CurrentMethods:   []string{"POST"},
-		CurrentTemplates: nil,
-		CurrentView:      nil,
-		StoredViews:      views,
+		registeredRoute: "",
+		routePaths:      nil,
+		rootName:        "",
+		Route:           "/blogs",
+		Methods:         []string{"POST"},
+		Templates:       nil,
+		View:            nil,
+		StoredViews:     views,
 	}
 }
 
-func (v *View) Create(config *Config, middleware *Middleware, mux *http.ServeMux, view View) {
+func (v *View) Create(a *App, view View) {
+	var finalTemplates []string
 	// Validate view
-	if view.CurrentRoute == "" {
-		log.Println("Route is not set")
-		return
+	if view.Route == "" {
+		log.Println("[GOMEK] Warning: Route is set to an empty string!")
 	}
 
 	t := Template{
-		base: config.BaseTemplates,
+		base: a.Config.BaseTemplates,
 	}
-	// Add templates
-	finalTemplates := t.Run(view.CurrentTemplates...)
-	if len(finalTemplates) > 0 {
-		log.Printf("Registering templates: %s: %s\n", view.CurrentRoute, finalTemplates)
+	// Add registeredTemplates
+	if len(view.Templates) > 0 {
+		finalTemplates = t.Run(view.Templates...)
+		// Add the route & templates for logging
+		registerTemplate := RegisteredTemplates{
+			Route:     view.Route,
+			Templates: view.Templates,
+			Partials:  t.base,
+		}
+		a.registeredTemplates = append(a.registeredTemplates, registerTemplate)
 	}
+
 	// Add middleware
 	var wrappedHandler http.HandlerFunc
-	wrappedHandler = v.handleFuncWrapper(finalTemplates, config, view, view.CurrentView)
+	wrappedHandler = v.handleFuncWrapper(finalTemplates, &a.Config, view, view.View)
 
-	for _, m := range *middleware {
+	for _, m := range a.middleware {
 		if m != nil {
 			wrappedHandler = m(wrappedHandler)
 		}
@@ -62,10 +74,10 @@ func (v *View) Create(config *Config, middleware *Middleware, mux *http.ServeMux
 
 	// In case there is an option to turn off all gomek default middleware
 	if wrappedHandler == nil {
-		wrappedHandler = v.handleFuncWrapper(finalTemplates, config, view, view.CurrentView)
+		wrappedHandler = v.handleFuncWrapper(finalTemplates, &a.Config, view, view.View)
 	}
 	// Create handler
-	mux.HandleFunc(view.CurrentRoute, wrappedHandler)
+	a.Mux.HandleFunc(view.Route, wrappedHandler)
 }
 
 func stripTokens(pathSegment string) string {
@@ -75,7 +87,7 @@ func stripTokens(pathSegment string) string {
 }
 
 func parseView(r *http.Request, view View) (*View, map[string]string, bool) {
-	if r.URL.Path == view.CurrentRoute {
+	if r.URL.Path == view.Route {
 		return &view, nil, true
 	}
 	// Check the path variables
@@ -94,7 +106,7 @@ func parseView(r *http.Request, view View) (*View, map[string]string, bool) {
 }
 
 func getView(r *http.Request, view View) (vv *View, mm map[string]string, b bool) {
-	if view.CurrentView != nil {
+	if view.View != nil {
 		vv, mm, b = parseView(r, view)
 	}
 
@@ -110,7 +122,7 @@ func setViewVars(r *http.Request, vars map[string]string) *http.Request {
 }
 
 func testMethod(r *http.Request, v View) bool {
-	for _, method := range v.CurrentMethods {
+	for _, method := range v.Methods {
 		if method == r.Method {
 			return true
 		}
@@ -131,7 +143,7 @@ func (v *View) handleFuncWrapper(templates []string, config *Config, view View, 
 			vars = viewVars
 			routeMatches = true
 			// Methods
-			if len(v.CurrentMethods) == 0 {
+			if len(v.Methods) == 0 {
 				// check route matches & skip method checks
 				methodMatches = true
 			}
@@ -148,11 +160,16 @@ func (v *View) handleFuncWrapper(templates []string, config *Config, view View, 
 		if len(templates) > 0 {
 			te, err := template.ParseFiles(templates...)
 			if err != nil {
-				log.Fatalf("Error parsing templates: %v", err.Error())
+				out := fmt.Sprintf("[GOMEK]: Error parsing registeredTemplates: %v", err.Error())
+				out = PrintWithColor(out, RED)
+				log.Fatalf(out)
 			}
-			te.ExecuteTemplate(w, config.BaseTemplateName, data)
+			err = te.ExecuteTemplate(w, config.BaseTemplateName, data)
+			if err != nil {
+				log.Printf("[GOMEK] Error: Error executing template!\n %e", err)
+			}
 		} else {
-			// No templates so treat as JSON / TEXT
+			// No registeredTemplates so treat as JSON / TEXT
 			r.Header.Set("Content-Type", "application/json")
 		}
 	}
@@ -203,10 +220,10 @@ func (v *View) StoreResource(a *App) {
 
 func (v *View) Store(a *App) {
 	c := View{
-		CurrentRoute:     a.currentRoute,
-		CurrentMethods:   a.currentMethods,
-		CurrentTemplates: a.currentTemplates,
-		CurrentView:      a.currentView,
+		Route:     a.currentRoute,
+		Methods:   a.currentMethods,
+		Templates: a.currentTemplates,
+		View:      a.currentView,
 	}
 	if a.currentRoute != "/" {
 		r := strings.Split(a.currentRoute, "/")
@@ -218,7 +235,7 @@ func (v *View) Store(a *App) {
 				c.registeredRoute = a.currentRoute
 				// Register routes by storing route metadata in a View type
 				// If a route has path variables, then set the route as the first path segment e.g /blogs
-				c.CurrentRoute = fmt.Sprintf("/%s/", r[1])
+				c.Route = fmt.Sprintf("/%s/", r[1])
 				// Save the path segments in slices of string, then we can match the path variables against incoming request
 				c.routePaths = r[1:]
 				c.rootName = r[1]
@@ -228,4 +245,5 @@ func (v *View) Store(a *App) {
 	}
 
 	v.StoredViews = append(v.StoredViews, c)
+	a.resetCurrentView()
 }

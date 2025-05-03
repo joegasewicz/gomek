@@ -36,6 +36,7 @@ type Middleware []func(http.Handler) http.HandlerFunc
 type Config struct {
 	BaseTemplateName string
 	BaseTemplates    []string
+	Debug            bool
 }
 
 type Resource interface {
@@ -43,6 +44,12 @@ type Resource interface {
 	Get(http.ResponseWriter, *http.Request, *Data)
 	Post(http.ResponseWriter, *http.Request, *Data)
 	Put(http.ResponseWriter, *http.Request, *Data)
+}
+
+type RegisteredTemplates struct {
+	Route     string
+	Templates []string
+	Partials  []string
 }
 
 type IApp interface {
@@ -82,6 +89,8 @@ type App struct {
 	rootCtx          context.Context
 	authCtx          context.Context
 	server           *http.Server
+	// Final registeredTemplates
+	registeredTemplates []RegisteredTemplates
 }
 
 func createAddr(a *App) string {
@@ -106,7 +115,9 @@ func (a *App) setup() *http.Server {
 		a.view.StoreResource(a)
 		// Duplicate the resource methods for /<path_name>/ to /<path_name>
 		// This is because Go's http package swaps out POSTs to GETS with a /<path_name>/ path.
-		a.cloneRoute()
+		if a.currentView != nil {
+			a.cloneRoute()
+		}
 	} else {
 		a.view.Store(a)
 	}
@@ -129,9 +140,13 @@ func (a *App) setup() *http.Server {
 	}
 	// Create views
 	for _, v := range a.view.StoredViews {
-		a.view.Create(&a.Config, &a.middleware, a.Mux, v)
+		a.view.Create(a, v)
 	}
 
+	// Log registeredTemplates
+	if a.Config.Debug {
+		LogTemplates(a.registeredTemplates)
+	}
 	// Create the origin
 	address := createAddr(a)
 	// Server
@@ -157,6 +172,7 @@ func (a *App) resetCurrentView() {
 	a.currentMethods = nil
 	a.baseTemplates = nil
 	a.currentView = nil
+	a.currentTemplates = nil
 }
 
 func (a *App) cloneRoute() {
@@ -168,7 +184,7 @@ func (a *App) cloneRoute() {
 				// Construct a path name from the stored `registeredRoute` value
 				for _, storedView := range a.view.StoredViews {
 					if storedView.registeredRoute == a.currentRoute {
-						// Create a route without the slash at the parth end e.g /<path_name>
+						// Create a route without the slash at the path end e.g /<path_name>
 						a.currentRoute = fmt.Sprintf("/%s", storedView.rootName)
 						a.view.StoreResource(a)
 					}
@@ -232,12 +248,12 @@ func (a *App) Route(route string) *App {
 }
 
 // Templates Method that takes a single template relative path or multiple template
-// path slices of main route templates (not partial templates). For example:
+// path slices of main route registeredTemplates (not partial registeredTemplates). For example:
 //
 //	 app.Route("/")
 //		.View(Home)
 //		.Methods("GET")
-//		.Templates("./templates/hero.html", "./templates/routes/home.html")
+//		.Templates("./registeredTemplates/hero.html", "./registeredTemplates/routes/home.html")
 //
 // The above example adds a `hero.html` partial template & a main route `home.html` template.
 func (a *App) Templates(templates ...string) {
@@ -248,10 +264,10 @@ func (a *App) Templates(templates ...string) {
 // template file.
 //
 //	baseTemplates := []string{
-//		"./templates/layout.html",
-//		"./templates/sidebar.html",
-//		"./templates/navbar.html",
-//		"./templates/footer.html",
+//		"./registeredTemplates/layout.html",
+//		"./registeredTemplates/sidebar.html",
+//		"./registeredTemplates/navbar.html",
+//		"./registeredTemplates/footer.html",
 //	}
 //	app.BaseTemplate(baseTemplates)
 func (a *App) BaseTemplates(templates ...string) {
@@ -363,19 +379,19 @@ type _App struct {
 	*App
 }
 
-// Start sets up all the registered views, templates & middleware
+// Start sets up all the registered views, registeredTemplates & middleware
 //
 //	app = gomek.New(gomek.Config{})
 //	app.Start()
 func (a *App) Start() error {
 	// Start server...
 	a.server = a.setup()
-	log.Printf("Starting server on %s://%s", a.Protocol, a.server.Addr)
+	msg := fmt.Sprintf("[GOMEK] Starting server on %s://%s", a.Protocol, a.server.Addr)
+	out := PrintWithColor(msg, BLUE)
+	log.Printf(out)
 	err := a.server.ListenAndServe()
 	if err != nil {
-		log.Println("error starting gomek server", err)
-	} else {
-		log.Printf("Starting server on %s://%s", a.Protocol, a.server.Addr)
+		log.Println("[GOMEK] Error starting gomek server", err)
 	}
 	return err
 }
