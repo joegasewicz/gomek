@@ -2,6 +2,8 @@
 
 A minimal http framework that includes some useful tools. Inspired by Flask.
 
+## ⚠️ Moved to 👉 [ForestMQ](https://github.com/josefdigital/forestmq)
+
 ⚠️ *Production ready in v1.0.0*
 
 ## Features
