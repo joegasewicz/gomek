@@ -5,16 +5,17 @@ A minimal http framework that includes some useful tools. Inspired by Flask.
 ⚠️ *Production ready in v1.0.0*
 
 ## Features
-- Easy to learn API.
-- Views handle your data only e.g. no template logic (Single-responsibility principle).
-- Define HTTP methods per View method.
-- Middleware - add yor own middleware
-- Auth
+- Best in class templating setup & usage.
+- Fast C router. *TODO* 
+- Views & or Resources handle your data only e.g. no template logic (Single-responsibility principle).
+- Define HTTP methods per View/Resource method.
+- Middleware + add your own custom middleware.
+- Security Tools (CRSF, CORS, Rate limiter .etc). *TODO*
+- Auth middleware
 - Logging
-- CORS
 - JSON
-- Access request arguments
-- Static files
+- File uploads *TODO*
+- Caching *TODO*
 
 # Install
 ```bash
